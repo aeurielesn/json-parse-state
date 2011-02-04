@@ -22,7 +22,7 @@ Example
 
 ### Double escaped
 
-    json_parse(x = '\{\\"tag\\":\\"\\u003cspan style=\'color:red;\'>\\u003c\\\\\\/span>\\"\}').tag
+    json_parse('\{\\"tag\\":\\"\\u003cspan style=\'color:red;\'>\\u003c\\\\\\/span>\\"\}').tag
     Result: <span style='color:red;'></span>
 
 ### Ignore
