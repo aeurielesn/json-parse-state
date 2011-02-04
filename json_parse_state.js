@@ -297,7 +297,7 @@ var json_parse = (function () {
 // The extraction process is cautious.
 
         var r,          // The result of the exec method.
-            tx = /^[\x20\t\n\r]*(?:([,:\[\]{}]|true|false|null)|(-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)|"((?:[^\r\n\t\\\"]|\\(?:["\\\/trnfb]|u[0-9a-fA-F]{4}))*)")/;
+            tx = /^[\x20\t\n\r]*(?:([,:\[\]{}]|true|false|null)|(-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)|"((?:[^\r\n\t\\\"]|\\(?:["\\\/trnfb]|u[0-9a-fA-F]{4}))*)"|\\"((?:[^\r\n\t\\\")]|\\(?:\\["\\\/trnfb]|u[0-9a-fA-F]{4}))*)\\")/;
 
 // Set the starting state.
 
@@ -314,7 +314,7 @@ var json_parse = (function () {
 
 // For each token...
 
-            for (;;) {
+            while(state != 'ok') {
                 r = tx.exec(source);
                 if (!r) {
                     break;
@@ -324,7 +324,9 @@ var json_parse = (function () {
 //  r[0] contains everything that matched, including any initial whitespace.
 //  r[1] contains any punctuation that was matched, or true, false, or null.
 //  r[2] contains a matched number, still in string form.
-//  r[3] contains a matched string, without quotes but with ecapement.
+//  r[3] contains a matched string, without quotes but with escapement.
+//  r[4] contains a matched double escaped string, without quotes but with
+//       double escapement.
 
                 if (r[1]) {
 
@@ -339,13 +341,24 @@ var json_parse = (function () {
 
                     value = +r[2];
                     number[state]();
-                } else {
+                
+                } else if (r[3]) {
 
 // String token: Replace the escapement sequences and execute the action for
 // this state and string.
 
                     value = debackslashify(r[3]);
                     string[state]();
+                    
+                } else {
+                
+// Double escaped string: Replace the double escapement and execute the
+// action for this state and string.
+
+                    value = eval('"' + r[4] + '"');
+                    value = debackslashify(value);
+                    string[state]();
+                
                 }
 
 // Remove the token from the string. The loop will continue as long as there
@@ -362,11 +375,10 @@ var json_parse = (function () {
             state = e;
         }
 
-// The parsing is finished. If we are not in the final 'ok' state, or if the
-// remaining source contains anything except whitespace, then we did not have
-//a well-formed JSON text.
+// The parsing is finished. If we are not in the final 'ok' state then we did 
+// not have a well-formed JSON text.
 
-        if (state !== 'ok' || /[^\x20\t\n\r]/.test(source)) {
+        if (state !== 'ok') {
             throw state instanceof SyntaxError ? state : new SyntaxError('JSON');
         }
 
